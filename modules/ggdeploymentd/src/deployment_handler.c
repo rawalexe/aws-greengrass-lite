@@ -1597,7 +1597,12 @@ static GgError resolve_dependencies(
                 gg_kv_key(*pair), GG_STR("aws.greengrass.NucleusLite")
             )) {
             GgBuffer software_version = GG_STR(GGL_VERSION);
-            if (!gg_buffer_eq(component_version, software_version)) {
+            // is_in_range ignores build metadata (SemVer 2.0.0 section 10),
+            // so a dev build 2.6.0+abc123 satisfies a deployment requesting
+            // 2.6.0. An empty requirement matches any version, so a missing
+            // version field is rejected explicitly.
+            if ((component_version.len == 0)
+                || !is_in_range(software_version, component_version)) {
                 GG_LOGE(
                     "The deployment failed. The aws.greengrass.NucleusLite component version specified in the deployment is %.*s, but the version of the Greengrass nucleus lite software is %.*s. Please ensure that the version in the deployment matches before attempting the deployment again.",
                     (int) component_version.len,

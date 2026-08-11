@@ -15,10 +15,23 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+// Strip SemVer build metadata ('+' suffix) from a null-terminated C string
+// in-place. SemVer 2.0.0 section 10: build metadata MUST be ignored when
+// determining version precedence.
+static void strip_build_metadata_cstr(char *s) {
+    char *plus = strchr(s, '+');
+    if (plus != NULL) {
+        *plus = '\0';
+    }
+}
+
 static bool process_version(
     GgByteVec current_requirement, char *current_version
 ) {
     bool return_status = false;
+
+    // Strip build metadata from requirement for precedence comparison
+    strip_build_metadata_cstr((char *) current_requirement.buf.data);
 
     if (current_requirement.buf.data[0] == '>') {
         if (current_requirement.buf.data[1] == '=') {
@@ -189,6 +202,9 @@ bool is_in_range(GgBuffer version, GgBuffer requirements_range) {
         return false;
     }
 
+    // Strip build metadata from version for precedence comparison
+    strip_build_metadata_cstr((char *) current_version_vec.buf.data);
+
     for (ulong index = 0; index < requirements_range.len; index++) {
         if (requirements_range_as_char[index] == ' ') {
             // null terminating as strverscmp requires it
@@ -296,6 +312,33 @@ GG_TEST_DEFINE(semver_valid_rejects_malformed) {
     TEST_ASSERT_FALSE(is_valid_semver(GG_STR("1.2.x")));
     TEST_ASSERT_FALSE(is_valid_semver(GG_STR("1.2.3 ")));
     TEST_ASSERT_FALSE(is_valid_semver(GG_STR("1.2.3\nfoo")));
+}
+
+GG_TEST_DEFINE(semver_build_metadata_ignored) {
+    // Build metadata on version side
+    TEST_ASSERT_TRUE(is_in_range(GG_STR("2.6.0+d3c2fa3"), GG_STR("2.6.0")));
+    TEST_ASSERT_TRUE(is_in_range(GG_STR("2.6.0+d3c2fa3"), GG_STR("=2.6.0")));
+    TEST_ASSERT_TRUE(is_in_range(GG_STR("2.6.0+d3c2fa3"), GG_STR("<=2.6.0")));
+    TEST_ASSERT_TRUE(is_in_range(GG_STR("2.6.0+d3c2fa3"), GG_STR(">=2.6.0")));
+    TEST_ASSERT_FALSE(is_in_range(GG_STR("2.6.0+d3c2fa3"), GG_STR(">2.6.0")));
+    TEST_ASSERT_FALSE(is_in_range(GG_STR("2.6.0+d3c2fa3"), GG_STR("<2.6.0")));
+    // Realistic recipe range
+    TEST_ASSERT_TRUE(
+        is_in_range(GG_STR("2.6.0+d3c2fa3"), GG_STR(">=2.6.0 <2.7.0"))
+    );
+    // Build metadata on requirement side
+    TEST_ASSERT_TRUE(is_in_range(GG_STR("2.6.0"), GG_STR("=2.6.0+other")));
+    // Differing metadata on both sides
+    TEST_ASSERT_TRUE(is_in_range(GG_STR("2.6.0+aaa"), GG_STR("=2.6.0+bbb")));
+    // Multi-token range over the same core version
+    TEST_ASSERT_TRUE(
+        is_in_range(GG_STR("2.6.0+d3c2fa3"), GG_STR(">=2.6.0 <=2.6.0"))
+    );
+    TEST_ASSERT_TRUE(
+        is_in_range(GG_STR("2.6.0+aaa"), GG_STR(">=2.6.0+x <=2.6.0+y"))
+    );
+    // Must not over-match
+    TEST_ASSERT_FALSE(is_in_range(GG_STR("2.6.1+d3c2fa3"), GG_STR("=2.6.0")));
 }
 
 #endif

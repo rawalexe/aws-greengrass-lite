@@ -16,3 +16,6 @@ provided requirements range. The library abides by the below specification
   it returns false
 - [semver-7] Empty `requirement_range` will be treated as any version is valid
 - [semver-8] Max requirement within `requirement_range` can be 512 values.
+- [semver-9] Build metadata (a `+` suffix on the version string) is ignored when
+  determining version precedence, on both the `version` and the
+  `requirements_range` side, per SemVer 2.0.0 section 10.
