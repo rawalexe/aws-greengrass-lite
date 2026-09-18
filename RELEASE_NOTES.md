@@ -1,3 +1,22 @@
+# Release Notes v2.7.0
+
+New features:
+
+- New log ids for correlation of logs between GG nucleus services.
+- Config requests for `aws.greengras.Nucleus` are automatically routed to
+  `aws.greengrass.NucleusLite`.
+- New IPC command SubscribeToIoTCoreConnectionStatus allows notifications of
+  when the nucleus disconnects or reconnects.
+
+Bug fixes:
+
+- Additional validation is applied to IPC authorization policies.
+- TES credentials are reset when credential-relevant config values are changed.
+- IoT Core endpoint hostname is validated.
+- Additional validation for component names.
+- Fix escaping of SetEnv environment variables.
+- Other miscellaneous bug fixes.
+
 # Release Notes v2.6.0
 
 New features:
